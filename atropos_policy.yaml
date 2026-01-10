@@ -1,0 +1,55 @@
+# Atropos Policy
+# Deviation beyond threshold triggers a cut.
+
+meta:
+  version: "1.0"
+  last_reviewed: "2026-01-10"
+
+server:
+  listen_addr: ":8443"
+  hmac_secret: "change-me-in-prod"  # or set ATROPOS_HMAC_SECRET
+
+nodes:
+  athena:
+    host: "athena.local"
+    port: 22
+    user: "root"
+    description: "Primary application server"
+    strategies:
+      - threshold: 0.85
+        action: vbox_revert_snapshot
+        snapshot_name: "LAST_ORDERED_STATE"
+        critical: true
+      - threshold: 0.70
+        action: docker_stop_all
+
+  borg:
+    host: "borg.local"
+    port: 22
+    user: "root"
+    description: "Message broker / API gateway"
+    strategies:
+      - threshold: 0.90
+        action: ssh_isolate_network
+        command: "systemctl stop wireguard@wg0"
+        critical: true
+      - threshold: 0.75
+        action: docker_pause_all
+
+  charon:
+    host: "charon.local"
+    port: 22
+    user: "root"
+    description: "Perimeter firewall / IDS"
+    strategies:
+      - threshold: 0.95
+        action: vbox_revert_snapshot
+        snapshot_name: "LAST_ORDERED_STATE"
+        critical: true
+      - threshold: 0.90
+        action: ssh_isolate_network
+        command: "wg-quick down wg0 && iptables -P INPUT DROP && iptables -P OUTPUT DROP"
+        critical: true
+      - threshold: 0.80
+        action: docker_pause_all
+        critical: true
