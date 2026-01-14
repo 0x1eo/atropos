@@ -11,12 +11,15 @@ import (
 
 	"atropos/api"
 	"atropos/engine"
+	"atropos/history"
 	"atropos/internal/logger"
+	"atropos/notifications"
 	"atropos/policy"
 )
 
 func main() {
 	policyPath := flag.String("policy", "atropos_policy.yaml", "Path to policy file")
+	historyDir := flag.String("history-dir", "cut_history", "Directory for cut history")
 	flag.Parse()
 
 	log := logger.Get()
@@ -29,7 +32,14 @@ func main() {
 
 	log.Info("POLICY_LOADED", zap.Int("node_count", len(pol.Nodes)))
 
-	exec := engine.NewExecutor(pol)
+	historyMgr := history.NewHistoryManager(*historyDir)
+	log.Info("HISTORY_MANAGER_INIT", zap.String("history_dir", *historyDir))
+
+	notifConfig := &notifications.NotificationConfig{Enabled: false}
+	notifMgr := notifications.NewNotificationManager(notifConfig)
+	log.Info("NOTIFICATION_MANAGER_INIT", zap.Bool("enabled", notifConfig.Enabled))
+
+	exec := engine.NewExecutor(pol, historyMgr, notifMgr)
 	server := api.NewServer(exec, pol.GetHMACSecret())
 
 	quit := make(chan os.Signal, 1)

@@ -150,8 +150,8 @@ func NewServer(exec *engine.Executor, hmacSecret string) *gin.Engine {
 		SkipPaths: []string{"/api/v1/health"},
 	}))
 
-	handler := NewWebhookHandler(exec, hmacSecret)
-	handler.RegisterRoutes(r)
+	routes := NewRoutes(exec, hmacSecret)
+	routes.RegisterRoutes(r)
 
 	return r
 }

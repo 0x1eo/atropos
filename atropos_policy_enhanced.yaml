@@ -1,0 +1,84 @@
+# Enhanced Atropos Policy with all features
+# This policy demonstrates: time windows, rate limiting, conditional actions, and escalations
+
+meta:
+  version: "1.1"
+  last_reviewed: "2026-01-14"
+
+server:
+  listen_addr: ":8443"
+  hmac_secret: "change-me-in-production-use-env-var"
+
+nodes:
+  # Production node with time windows and rate limiting
+  athena:
+    host: "athena.local"
+    port: 22
+    user: "root"
+    description: "Primary application server"
+    # Only execute cuts during business hours
+    time_windows:
+      - start: "09:00"
+        end: "17:00"
+    # Allow maintenance window
+      - start: "00:00"
+        end: "04:00"
+    # Rate limit: max 3 cuts per hour
+    rate_limit:
+      max_cuts: 3
+      window_minutes: 60
+    strategies:
+      # Critical: VM snapshot revert with fallback
+      - threshold: 0.85
+        action: vbox_revert_snapshot
+        snapshot_name: "LAST_ORDERED_STATE"
+        critical: true
+        # If snapshot revert fails, isolate network
+        on_failure: "ssh_isolate_network"
+      # Medium: Pause all Docker containers
+      - threshold: 0.70
+        action: docker_pause_all
+
+  # High-risk node with aggressive response
+  borg:
+    host: "borg.local"
+    port: 22
+    user: "root"
+    description: "Message broker / API gateway"
+    rate_limit:
+      max_cuts: 5
+      window_minutes: 30
+    strategies:
+      # Immediate isolation on high entropy
+      - threshold: 0.90
+        action: ssh_isolate_network
+        command: "systemctl stop wireguard@wg0 && iptables -P INPUT DROP && iptables -P OUTPUT DROP"
+        critical: true
+      # Fallback: Pause Docker containers
+      - threshold: 0.75
+        action: docker_pause_all
+
+  # Perimeter node with multiple fallback strategies
+  charon:
+    host: "charon.local"
+    port: 22
+    user: "root"
+    description: "Perimeter firewall / IDS"
+    strategies:
+      # Highest threshold: VM poweroff
+      - threshold: 0.95
+        action: vbox_poweroff
+        critical: true
+      # Very high: VM snapshot revert
+      - threshold: 0.90
+        action: vbox_revert_snapshot
+        snapshot_name: "LAST_ORDERED_STATE"
+        critical: true
+      # High: Network isolation with complex command
+      - threshold: 0.80
+        action: ssh_isolate_network
+        command: "wg-quick down wg0 && iptables -P INPUT DROP && iptables -P OUTPUT DROP"
+        on_failure: "docker_stop_all"
+      # Medium: Pause Docker
+      - threshold: 0.70
+        action: docker_pause_all

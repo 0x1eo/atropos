@@ -14,15 +14,29 @@ type Strategy struct {
 	Command      string  `yaml:"command,omitempty"`
 	Critical     bool    `yaml:"critical,omitempty"`
 	SnapshotName string  `yaml:"snapshot_name,omitempty"`
+	EscalateTo   string  `yaml:"escalate_to,omitempty"`
+	OnFailure    string  `yaml:"on_failure,omitempty"`
+}
+
+type TimeWindow struct {
+	Start string `yaml:"start"`
+	End   string `yaml:"end"`
 }
 
 type NodePolicy struct {
-	Host        string     `yaml:"host,omitempty"`
-	Port        int        `yaml:"port,omitempty"`
-	User        string     `yaml:"user,omitempty"`
-	Description string     `yaml:"description,omitempty"`
-	Strategies  []Strategy `yaml:"strategies"`
-	Name        string     `yaml:"-"`
+	Host        string       `yaml:"host,omitempty"`
+	Port        int          `yaml:"port,omitempty"`
+	User        string       `yaml:"user,omitempty"`
+	Description string       `yaml:"description,omitempty"`
+	Strategies  []Strategy   `yaml:"strategies"`
+	TimeWindows []TimeWindow `yaml:"time_windows,omitempty"`
+	RateLimit   *RateLimit   `yaml:"rate_limit,omitempty"`
+	Name        string       `yaml:"-"`
+}
+
+type RateLimit struct {
+	MaxCuts int `yaml:"max_cuts"`
+	Window  int `yaml:"window_minutes"`
 }
 
 type ServerConfig struct {
@@ -102,6 +116,15 @@ func (p *RemediationPolicy) GetNode(name string) (*NodePolicy, bool) {
 func (n *NodePolicy) SelectStrategy(entropy float64) (*Strategy, bool) {
 	for i := range n.Strategies {
 		if entropy >= n.Strategies[i].Threshold {
+			return &n.Strategies[i], true
+		}
+	}
+	return nil, false
+}
+
+func (n *NodePolicy) SelectStrategyByAction(action string) (*Strategy, bool) {
+	for i := range n.Strategies {
+		if n.Strategies[i].Action == action {
 			return &n.Strategies[i], true
 		}
 	}
