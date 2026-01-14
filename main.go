@@ -35,7 +35,17 @@ func main() {
 	historyMgr := history.NewHistoryManager(*historyDir)
 	log.Info("HISTORY_MANAGER_INIT", zap.String("history_dir", *historyDir))
 
-	notifConfig := &notifications.NotificationConfig{Enabled: false}
+	var notifConfig *notifications.NotificationConfig
+	if notifPath := os.Getenv("ATROPOS_NOTIFICATIONS_CONFIG"); notifPath != "" {
+		var err error
+		notifConfig, err = notifications.LoadNotificationConfig(notifPath)
+		if err != nil {
+			log.Warn("NOTIFICATION_CONFIG_LOAD_FAILED", zap.Error(err))
+			notifConfig = &notifications.NotificationConfig{Enabled: false}
+		}
+	} else {
+		notifConfig = &notifications.NotificationConfig{Enabled: false}
+	}
 	notifMgr := notifications.NewNotificationManager(notifConfig)
 	log.Info("NOTIFICATION_MANAGER_INIT", zap.Bool("enabled", notifConfig.Enabled))
 

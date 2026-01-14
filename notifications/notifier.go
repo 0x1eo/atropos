@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/smtp"
+	"os"
+
+	"gopkg.in/yaml.v3"
 	"time"
 )
 
@@ -188,6 +191,20 @@ func (cn *CompositeNotifier) Notify(event *CutEvent) error {
 type NotificationManager struct {
 	config   *NotificationConfig
 	notifier Notifier
+}
+
+func LoadNotificationConfig(path string) (*NotificationConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read config file: %w", err)
+	}
+
+	var config NotificationConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+
+	return &config, nil
 }
 
 func NewNotificationManager(config *NotificationConfig) *NotificationManager {

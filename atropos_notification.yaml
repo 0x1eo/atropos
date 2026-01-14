@@ -1,0 +1,21 @@
+# Atropos Notification Configuration
+# Set ATROPOS_NOTIFICATIONS_CONFIG environment variable to this file path
+
+enabled: true
+
+email:
+  smtp_host: "smtp.example.com"
+  smtp_port: 587
+  smtp_user: "alerts@example.com"
+  smtp_password: "password"
+  from: "atropos@example.com"
+  to:
+    - "admin@example.com"
+    - "ops@example.com"
+
+webhook:
+  url: "https://hooks.example.com/atropos"
+  headers:
+    Authorization: "Bearer token123"
+    X-Custom-Header: "value"
+  retries: 3
